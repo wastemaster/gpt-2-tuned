@@ -24,6 +24,9 @@ parser = argparse.ArgumentParser(
     description='Fine-tune GPT-2 on your custom dataset.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+parser.add_argument('--max_to_keep', metavar='MAX_TO_KEEP', type=int, default=2, help='Max checkpoints to keep')
+parser.add_argument('--iterate', metavar='ITERATE', type=int, default=10, help='Make this number of iterations and quit')
+
 parser.add_argument('--dataset', metavar='PATH', type=str, required=True, help='Input file, directory, or glob pattern (utf-8 text, or preencoded .npz files).')
 parser.add_argument('--model_name', metavar='MODEL', type=str, default='117M', help='Pretrained model name')
 parser.add_argument('--combine', metavar='CHARS', type=int, default=50000, help='Concatenate input files with <|endoftext|> separator into chunks of this minimum size')
@@ -151,7 +154,7 @@ def main():
 
         saver = tf.train.Saver(
             var_list=all_vars,
-            max_to_keep=5,
+            max_to_keep=args.max_to_keep,
             keep_checkpoint_every_n_hours=2)
         sess.run(tf.global_variables_initializer())
 
@@ -255,7 +258,9 @@ def main():
         start_time = time.time()
 
         try:
-            while True:
+            # count iterations
+            loop_counter = 1
+            while loop_counter <= args.iterate:
                 if counter % args.save_every == 0:
                     save()
                 if counter % args.sample_every == 0:
@@ -288,6 +293,10 @@ def main():
                         avg=avg_loss[0] / avg_loss[1]))
 
                 counter += 1
+                loop_counter += 1
+
+            print('trained {} iterations'.format(loop_counter-1))
+            save()
         except KeyboardInterrupt:
             print('interrupted')
             save()
